@@ -1,0 +1,14 @@
+{
+  "name": "God's Commands in Light of Eternity",
+  "short_name": "In Light of Eternity",
+  "description": "A visual summary of what God commands and emphasizes throughout the 66 books of Scripture, in light of eternity.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
