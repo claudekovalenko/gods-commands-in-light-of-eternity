@@ -24,6 +24,9 @@
     return list.some(t => t.id === saved) ? saved : list[0].id;
   })();
 
+  let mode = ['map','list','review'].includes(store.get('view','')) ? store.get('view','') : 'map';
+  let query = '';
+
   const ui = () => UI[lang];
   const label = th => pick(th.label, lang);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -343,13 +346,168 @@
     document.querySelectorAll('[data-legend]').forEach(el => {
       el.textContent = s.legend[el.dataset.legend] || '';
     });
+    viewSeg.innerHTML = ['map','list','review'].map(v =>
+      `<button type="button" data-view="${v}" aria-pressed="${v === mode}">${esc(s.views[v])}</button>`).join('');
+    searchEl.placeholder = s.search;
 
     // Arabic metrics differ from English, so every label must be re-fitted, and the
     // header height may change, which moves the layout bounds.
     computeAnchors();
     nodes.forEach(refresh);
     if (openTheme) openPanel(openTheme);
+    applyMode();
   }
+
+  // ——— views: map to browse, list to scan, review to memorise ———
+  const viewSeg = document.getElementById('view-seg');
+  const listEl = document.getElementById('list');
+  const reviewEl = document.getElementById('review');
+  const searchEl = document.getElementById('search');
+  const norm = s => String(s).toLowerCase().replace(/[\u064B-\u0652\u0640]/g, '');
+
+  function matches(theme) {
+    if (!query) return true;
+    const q = norm(query);
+    const hay = [pick(theme.label, lang), pick(theme.label, 'en'), pick(theme.summary, lang),
+                 ...theme.verses.map(v => v.ref + ' ' + localizeRef(v.ref, lang) + ' ' + (v.text.esv || ''))].join(' ');
+    return norm(hay).includes(q);
+  }
+
+  const pips = e => '●'.repeat(e) + '○'.repeat(3 - e);
+
+  function renderList() {
+    const hubs = THEMES.filter(t => t.category === 'hub');
+    let html = '<div class="list-inner">';
+    let shown = 0;
+    const section = (heading, items, hubId) => {
+      const hits = items.filter(matches);
+      if (!hits.length) return '';
+      shown += hits.length;
+      const head = hubId
+        ? `<button class="group-head" data-id="${hubId}"><h3>${esc(heading)}</h3><span class="count">${hits.length}</span></button>`
+        : `<div class="group-head"><h3>${esc(heading)}</h3><span class="count">${hits.length}</span></div>`;
+      return head +
+        hits.map(t => `<button class="row ${t.category}" data-id="${t.id}">
+          <span class="pips" title="${esc(ui().emphasisNote[t.emphasis])}">${pips(t.emphasis)}</span>
+          <span class="name">${esc(pick(t.label, lang))}</span>
+          <span class="blurb">${esc(pick(t.summary, lang))}</span></button>`).join('');
+    };
+    html += section(ui().categories.center, THEMES.filter(t => t.category === 'center'));
+    hubs.forEach(h => { html += section(pick(h.label, lang), THEMES.filter(t => t.parent === h.id), h.id); });
+    if (!shown) html += `<p class="empty">${esc(ui().noMatches)}</p>`;
+    listEl.innerHTML = html + '</div>';
+  }
+
+  // ——— review deck ———
+  let deck = [], deckPos = 0, revealed = false, deckGroup = 'all';
+
+  function buildDeck(keepPos) {
+    deck = THEMES.filter(t => t.category !== 'hub')
+      .filter(t => deckGroup === 'all' || t.parent === deckGroup || t.id === deckGroup)
+      .filter(matches);
+    if (!keepPos) deckPos = 0;
+    if (deckPos >= deck.length) deckPos = 0;
+    revealed = false;
+  }
+
+  function renderReview() {
+    const top = document.getElementById('review-top');
+    const card = document.getElementById('review-card');
+    const actions = document.getElementById('review-actions');
+    const hubs = THEMES.filter(t => t.category === 'hub');
+    top.innerHTML = `<select id="deck-group">
+        <option value="all">${esc(ui().allGroups)}</option>
+        ${hubs.map(h => `<option value="${h.id}">${esc(pick(h.label, lang))}</option>`).join('')}
+      </select>
+      <span>${deck.length ? deckPos + 1 : 0} ${esc(ui().ofCount)} ${deck.length}</span>
+      <button class="btn" id="shuffle">${esc(ui().shuffle)}</button>`;
+    document.getElementById('deck-group').value = deckGroup;
+
+    if (!deck.length) { card.innerHTML = `<p class="empty">${esc(ui().noMatches)}</p>`; actions.innerHTML = ''; return; }
+    const t = deck[deckPos];
+    card.innerHTML = `
+      <div class="cat">${esc(ui().categories[t.category] || '')}</div>
+      <h2>${esc(pick(t.label, lang))}</h2>
+      <div class="emph">${esc(ui().emphasisNote[t.emphasis])}</div>
+      ${revealed ? `<div class="back"><p class="summary">${esc(pick(t.summary, lang))}</p>
+        ${t.verses.map(verseHTML).join('')}</div>` : ''}`;
+    actions.innerHTML = `
+      <button class="btn" id="rev-prev">${esc(ui().prev)}</button>
+      ${revealed ? '' : `<button class="btn primary" id="rev-show">${esc(ui().showVerses)}</button>`}
+      <button class="btn ${revealed ? 'primary' : ''}" id="rev-next">${esc(ui().next)}</button>
+      <p class="review-hint">${esc(ui().reviewHint)}</p>`;
+  }
+
+  function applyMode() {
+    document.getElementById('graph').hidden = mode !== 'map';
+    document.getElementById('legend').style.display = mode === 'map' ? '' : 'none';
+    document.getElementById('hint').style.display = mode === 'map' && innerWidth <= 640 ? '' : 'none';
+    listEl.hidden = mode !== 'list';
+    reviewEl.hidden = mode !== 'review';
+    document.getElementById('header').style.display = mode === 'map' ? '' : 'none';
+    viewSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === mode));
+    const barH = document.getElementById('topbar').getBoundingClientRect().height;
+    listEl.style.paddingTop = (barH + 14) + 'px';
+    reviewEl.style.paddingTop = (barH + 14) + 'px';
+    if (mode === 'list') renderList();
+    if (mode === 'review') { buildDeck(true); renderReview(); }
+    if (mode === 'map') { computeAnchors(); nodes.forEach(refresh); applySearchToMap(); }
+    store.set('view', mode);
+  }
+
+  function applySearchToMap() {
+    nodes.forEach(n => {
+      const hit = matches(n.theme);
+      n.el.classList.toggle('dim', !!query && !hit);
+      n.el.classList.toggle('match', !!query && hit);
+    });
+  }
+
+  viewSeg.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-view]');
+    if (!btn) return;
+    mode = btn.dataset.view;
+    applyMode();
+  });
+
+  searchEl.addEventListener('input', () => {
+    query = searchEl.value.trim();
+    if (mode === 'list') renderList();
+    else if (mode === 'review') { buildDeck(false); renderReview(); }
+    else applySearchToMap();
+  });
+
+  listEl.addEventListener('click', e => {
+    const hit = e.target.closest('.row, .group-head[data-id]');
+    if (hit) openPanel(THEMES.find(t => t.id === hit.dataset.id));
+  });
+
+  reviewEl.addEventListener('click', e => {
+    const id = e.target.id;
+    if (id === 'rev-show') { revealed = true; renderReview(); }
+    else if (id === 'rev-next') { deckPos = (deckPos + 1) % deck.length; revealed = false; renderReview(); }
+    else if (id === 'rev-prev') { deckPos = (deckPos - 1 + deck.length) % deck.length; revealed = false; renderReview(); }
+    else if (id === 'shuffle') {
+      for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+      deckPos = 0; revealed = false; renderReview();
+    }
+  });
+  reviewEl.addEventListener('change', e => {
+    if (e.target.id === 'deck-group') { deckGroup = e.target.value; buildDeck(false); renderReview(); }
+  });
+
+  addEventListener('keydown', e => {
+    if (e.target.matches('input, select, textarea')) {
+      if (e.key === 'Escape') { searchEl.value = ''; query = ''; searchEl.blur(); applyMode(); }
+      return;
+    }
+    if (e.key === 'Escape') { closePanel(); return; }
+    if (e.key === '/') { e.preventDefault(); searchEl.focus(); return; }
+    if (mode !== 'review' || !deck.length) return;
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (revealed) { deckPos = (deckPos + 1) % deck.length; revealed = false; } else revealed = true; renderReview(); }
+    else if (e.key === 'ArrowRight') { deckPos = (deckPos + 1) % deck.length; revealed = false; renderReview(); }
+    else if (e.key === 'ArrowLeft') { deckPos = (deckPos - 1 + deck.length) % deck.length; revealed = false; renderReview(); }
+  });
 
   langSeg.addEventListener('click', e => {
     const btn = e.target.closest('button[data-lang]');
@@ -448,6 +606,7 @@
   // ——— physics: spring to anchor + soft repulsion = squishy, bouncy nodes ———
   const SPRING = 0.012, DAMP = 0.88, REPEL = 1.02, GAP = 7;
   function tick() {
+    if (mode !== 'map') { requestAnimationFrame(tick); return; }
     for (const n of nodes) {
       if (!n.dragging) {
         n.vx += (n.ax - n.x) * SPRING;

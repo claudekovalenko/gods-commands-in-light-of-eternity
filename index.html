@@ -18,13 +18,19 @@
 </header>
 
 <div id="topbar">
-  <div class="ctl">
-    <span class="cap">Language &middot; &#1575;&#1604;&#1604;&#1594;&#1577;</span>
-    <div class="seg" id="lang-seg" role="group" aria-label="Language / اللغة"></div>
+  <div class="bar-row">
+    <div class="ctl">
+      <span class="cap">Language &middot; &#1575;&#1604;&#1604;&#1594;&#1577;</span>
+      <div class="seg" id="lang-seg" role="group" aria-label="Language / اللغة"></div>
+    </div>
+    <div class="ctl ctl-end">
+      <span class="cap">Bible &middot; &#1575;&#1604;&#1578;&#1585;&#1580;&#1605;&#1577;</span>
+      <select id="translation" aria-label="Bible translation / ترجمة الكتاب المقدس"></select>
+    </div>
   </div>
-  <div class="ctl ctl-end">
-    <span class="cap">Bible &middot; &#1575;&#1604;&#1578;&#1585;&#1580;&#1605;&#1577;</span>
-    <select id="translation" aria-label="Bible translation / ترجمة الكتاب المقدس"></select>
+  <div class="bar-row row-2">
+    <div class="seg" id="view-seg" role="group" aria-label="View / العرض"></div>
+    <input id="search" type="search" autocomplete="off" spellcheck="false">
   </div>
 </div>
 
@@ -38,6 +44,14 @@
 <svg id="graph" role="img" aria-label="Interactive graph of biblical themes. Tap a node to read its verses."></svg>
 
 <div id="hint"></div>
+
+<main id="list" hidden></main>
+
+<section id="review" hidden>
+  <div id="review-top"></div>
+  <div id="review-card"></div>
+  <div id="review-actions"></div>
+</section>
 
 <aside id="panel" aria-live="polite">
   <button id="panel-close" aria-label="Close" title="Close">&times;</button>
