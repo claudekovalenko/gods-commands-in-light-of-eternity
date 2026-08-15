@@ -11,6 +11,13 @@ At the center is the entrance to everything: **believing in Jesus — salvation 
 
 **Emphasis is visualized by ring thickness**: the more often Scripture presses a theme, the bolder its node. Dashed rings mark things to avoid. Nodes are springy — drag them around; click any node to read its summary and ESV verses.
 
+## Live site
+
+**https://claudekovalenko.github.io/gods-commands-in-light-of-eternity/**
+
+Served by GitHub Pages from this branch, root folder. On a phone, use your browser's
+"Add to Home Screen" to install it as an app — it then runs full screen and works offline.
+
 ## Running it
 
 It's a fully static, dependency-free PWA. Serve the folder over HTTP(S):
