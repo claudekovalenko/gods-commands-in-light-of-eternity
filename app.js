@@ -51,9 +51,17 @@
   // pinching in is how the labels become readable.
   const view = { x: 0, y: 0, w: 0, h: 0 };
   const MIN_ZOOM = 0.6, MAX_ZOOM = 6;
+  const resetBtn = document.getElementById('reset-view');
 
   function applyView() {
+    if (![view.x, view.y, view.w, view.h].every(Number.isFinite) || view.w <= 0 || view.h <= 0) {
+      resetView(); return;                       // a bad gesture must not wreck the render
+    }
+    // Keep most of the viewport over the graph so it can't be dragged out of reach.
+    view.x = Math.max(-view.w * 0.4, Math.min(W - view.w * 0.6, view.x));
+    view.y = Math.max(-view.h * 0.4, Math.min(H - view.h * 0.6, view.y));
     svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
+    resetBtn.hidden = Math.abs(view.w - W) < 1 && Math.abs(view.x) < 1 && Math.abs(view.y) < 1;
   }
   function resetView() {
     view.x = 0; view.y = 0; view.w = W; view.h = H;
@@ -68,6 +76,7 @@
     };
   }
   function zoomAt(clientX, clientY, factor) {
+    if (!Number.isFinite(factor) || factor <= 0) return;
     const before = toGraph(clientX, clientY);
     const zoom = W / view.w;
     const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
@@ -299,14 +308,21 @@
       best = { scale: 7, rows: wrapWords(label(theme), 9).map(l => ({ text: l, rel: 1, italic: false, weight })) };
     }
 
+    // One <text> per line, never tspans in a shared <text>: a single <text> is one
+    // bidi paragraph, and WebKit reorders runs across the whole paragraph, which
+    // scrambles Arabic letters between the visual lines.
+    const dir = (LANGS.find(l => l.id === lang) || {}).dir || 'ltr';
     for (const { row, size, yc } of stack(best.rows, best.scale)) {
-      const ts = document.createElementNS(NS, 'tspan');
-      ts.setAttribute('x', 0);
-      ts.setAttribute('y', yc.toFixed(2));
-      ts.setAttribute('font-size', size.toFixed(2));
-      if (row.italic) ts.setAttribute('font-style', 'italic');
-      ts.textContent = row.text;
-      textEl.appendChild(ts);
+      const line = document.createElementNS(NS, 'text');
+      line.setAttribute('x', 0);
+      line.setAttribute('y', yc.toFixed(2));
+      line.setAttribute('font-size', size.toFixed(2));
+      line.setAttribute('dominant-baseline', 'central');
+      line.setAttribute('direction', dir);
+      line.setAttribute('unicode-bidi', 'isolate');
+      if (row.italic) line.setAttribute('font-style', 'italic');
+      line.textContent = row.text;
+      textEl.appendChild(line);
     }
   }
 
@@ -320,8 +336,8 @@
     g.setAttribute('class', `node ${n.theme.category}`);
     const c = document.createElementNS(NS, 'circle');
     c.setAttribute('stroke-width', strokeFor(n.theme));
-    const t = document.createElementNS(NS, 'text');
-    t.setAttribute('dominant-baseline', 'central');
+    const t = document.createElementNS(NS, 'g');
+    t.setAttribute('class', 'label');
     g.appendChild(c); g.appendChild(t);
     nodeLayer.appendChild(g);
     n.el = g; n.circle = c; n.textEl = t;
@@ -401,6 +417,7 @@
     viewSeg.innerHTML = ['map','list','review'].map(v =>
       `<button type="button" data-view="${v}" aria-pressed="${v === mode}">${esc(s.views[v])}</button>`).join('');
     searchEl.placeholder = s.search;
+    resetBtn.textContent = s.resetView;
 
     // Arabic metrics differ from English, so every label must be re-fitted, and the
     // header height may change, which moves the layout bounds.
@@ -493,6 +510,7 @@
   function applyMode() {
     document.getElementById('graph').hidden = mode !== 'map';
     document.getElementById('legend').style.display = mode === 'map' ? '' : 'none';
+    if (mode !== 'map') resetBtn.hidden = true;
     document.getElementById('hint').style.display = mode === 'map' && innerWidth <= 640 ? '' : 'none';
     listEl.hidden = mode !== 'list';
     reviewEl.hidden = mode !== 'review';
@@ -646,6 +664,9 @@
   }
   addEventListener('pointerup', endPointer);
   addEventListener('pointercancel', endPointer);
+
+  resetBtn.addEventListener('click', () => { resetView(); });
+  svg.addEventListener('dblclick', () => { resetView(); });
 
   svg.addEventListener('wheel', e => {
     e.preventDefault();

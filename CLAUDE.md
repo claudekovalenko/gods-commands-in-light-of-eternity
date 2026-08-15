@@ -55,6 +55,16 @@ keyboard: space reveals, arrows move). Don't regress these in favour of map poli
 - **Chrome does not mirror in RTL.** The top bar, legend and panel keep the same
   position in both languages, on purpose — only text direction flips. It was
   disorienting when the panel jumped sides on switching language.
+- **Multi-line labels are one `<text>` per line, never `<tspan>`s in a shared `<text>`.**
+  A single `<text>` is one bidi paragraph and WebKit reorders runs across the whole
+  paragraph, which scrambles Arabic letters between the visual lines (it looked fine in
+  Chromium, so only a real iOS screenshot caught it). Each line also carries
+  `direction` and `unicode-bidi="isolate"`.
+- **Zoom/pan is hardened**: a non-finite or zero viewBox resets instead of rendering
+  garbage, panning is clamped so the graph can't be dragged out of reach, and there is
+  a Reset view button plus double-tap.
+- **The service worker is network-first**, not cache-first. Cache-first left installed
+  clients serving an old build forever and never seeing fixes. Still bump `CACHE`.
 - **Node overlap**: resolved by position each frame (velocity forces alone let circles
   slide over each other and hide labels).
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.

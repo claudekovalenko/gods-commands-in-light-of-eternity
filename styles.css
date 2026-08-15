@@ -428,3 +428,20 @@ html[dir="rtl"] #search { text-align: right; }
   #list { padding: 0 12px 60px; }
   .row .blurb { display: none; }
 }
+
+#reset-view {
+  position: fixed;
+  right: 14px;
+  bottom: 42px;
+  z-index: 7;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 13px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+}
+#reset-view:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.node .label text { text-anchor: middle; }

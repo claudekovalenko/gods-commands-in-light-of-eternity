@@ -1,4 +1,4 @@
-const CACHE = 'eternity-v6';   // bump on every release so cached clients update
+const CACHE = 'eternity-v7';   // bump on every release so cached clients update
 const ASSETS = [
   './',
   './index.html',
@@ -23,14 +23,22 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Network-first for same-origin GETs, cache as fallback. Cache-first meant an
+// installed client could keep serving an old build indefinitely and never see a
+// fix; this still works fully offline, it just prefers a fresh copy when online.
 self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+
   e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      if (e.request.method === 'GET' && res.ok && new URL(e.request.url).origin === location.origin) {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-      }
-      return res;
-    }))
+    fetch(req)
+      .then(res => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
   );
 });
