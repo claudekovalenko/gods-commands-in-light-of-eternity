@@ -165,11 +165,10 @@
 
   // ——— build ———
   THEMES.forEach(t => {
-    const n = { theme: t, x: W / 2 + (Math.random() - 0.5) * 40, y: H / 2 + (Math.random() - 0.5) * 40, vx: 0, vy: 0, ax: W / 2, ay: H / 2, r: 20, dragging: false };
+    const n = { theme: t, x: W / 2, y: H / 2, vx: 0, vy: 0, ax: W / 2, ay: H / 2, r: 20, dragging: false };
     nodes.push(n); byId[t.id] = n;
   });
   computeAnchors();
-  nodes.forEach(n => { n.x = n.ax + (Math.random() - 0.5) * 60; n.y = n.ay + (Math.random() - 0.5) * 60; });
 
   const edgeLayer = document.createElementNS(NS, 'g');
   const nodeLayer = document.createElementNS(NS, 'g');
@@ -340,7 +339,7 @@
     n.el = g; n.circle = c; n.textEl = t;
     refresh(n);
 
-    g.addEventListener('mouseenter', () => { g.classList.add('highlight'); n.squish = 1; });
+    g.addEventListener('mouseenter', () => g.classList.add('highlight'));
     g.addEventListener('mouseleave', () => g.classList.remove('highlight'));
     g.addEventListener('click', e => { if (!n.moved) openPanel(n.theme); });
   });
@@ -417,6 +416,7 @@
     // header height may change, which moves the layout bounds.
     computeAnchors();
     nodes.forEach(refresh);
+    settle();
     if (openTheme) openPanel(openTheme);
   }
 
@@ -451,7 +451,7 @@
     n.el.addEventListener('pointerdown', e => {
       if (pointers.size > 1) return;
       const p = toGraph(e.clientX, e.clientY);
-      dragNode = n; n.dragging = true; n.moved = false;
+      dragNode = n; n.dragging = true; n.moved = false; wake();
       dragOff.x = n.x - p.x; dragOff.y = n.y - p.y;
       svg.classList.add('dragging');
       e.preventDefault();
@@ -491,6 +491,7 @@
       dragNode.vx = (nx - dragNode.x) * 0.6;
       dragNode.vy = (ny - dragNode.y) * 0.6;
       dragNode.x = nx; dragNode.y = ny;
+      wake();
       return;
     }
     if (panning) {
@@ -520,11 +521,16 @@
     zoomAt(e.clientX, e.clientY, Math.exp(-px * 0.0022));
   }, { passive: false });
 
-  addEventListener('resize', () => { computeAnchors(); nodes.forEach(refresh); });
+  addEventListener('resize', () => { computeAnchors(); nodes.forEach(refresh); settle(); });
 
-  // ——— physics: spring to anchor + soft repulsion = squishy, bouncy nodes ———
+  // ——— layout settling ———
+  // Learning this map depends on the bubbles being in the same place every time it
+  // is opened, so nothing here is random: positions start from the computed
+  // anchors, the arrangement is relaxed to a stable state *before* the first
+  // paint, and nothing animates unless a bubble is being dragged.
   const SPRING = 0.012, DAMP = 0.88, REPEL = 1.02, GAP = 7;
-  function tick() {
+
+  function step() {
     for (const n of nodes) {
       if (!n.dragging) {
         n.vx += (n.ax - n.x) * SPRING;
@@ -545,13 +551,16 @@
         }
       }
     }
+    let moved = 0;
     for (const n of nodes) {
-      if (!n.dragging) {
-        n.vx *= DAMP; n.vy *= DAMP; n.x += n.vx; n.y += n.vy;
-        const cx = clampX(n, n.x), cy = clampY(n, n.y);   // stay fully on screen
-        if (cx !== n.x) { n.x = cx; n.vx *= -0.35; }
-        if (cy !== n.y) { n.y = cy; n.vy *= -0.35; }
-      }
+      if (n.dragging) continue;
+      n.vx *= DAMP; n.vy *= DAMP;
+      const px = n.x, py = n.y;
+      n.x += n.vx; n.y += n.vy;
+      const cx = clampX(n, n.x), cy = clampY(n, n.y);   // stay fully on screen
+      if (cx !== n.x) { n.x = cx; n.vx *= -0.35; }
+      if (cy !== n.y) { n.y = cy; n.vy *= -0.35; }
+      moved = Math.max(moved, Math.abs(n.x - px), Math.abs(n.y - py));
     }
 
     // Hard separation: velocity forces alone still let circles slide over each
@@ -580,24 +589,34 @@
         n.x = clampX(n, n.x); n.y = clampY(n, n.y);
       }
     }
-
-    for (const n of nodes) {
-      // squish: brief scale pulse on hover
-      if (n.squish > 0.01) {
-        n.squish *= 0.86;
-        const s = 1 + Math.sin(n.squish * Math.PI) * 0.08;
-        n.el.setAttribute('transform', `translate(${n.x},${n.y}) scale(${s})`);
-      } else {
-        n.el.setAttribute('transform', `translate(${n.x},${n.y})`);
-      }
-    }
-    for (const e of edges) {
-      e.el.setAttribute('x1', e.from.x); e.el.setAttribute('y1', e.from.y);
-      e.el.setAttribute('x2', e.to.x); e.el.setAttribute('y2', e.to.y);
-    }
-    requestAnimationFrame(tick);
+    return moved;
   }
-  nodes.forEach(n => { n.squish = 0; });
-  applyLanguage();          // paints all chrome text and fits labels for the active language
-  requestAnimationFrame(tick);
+
+  function paint() {
+    for (const n of nodes) n.el.setAttribute('transform', `translate(${n.x.toFixed(2)},${n.y.toFixed(2)})`);
+    for (const e of edges) {
+      e.el.setAttribute('x1', e.from.x.toFixed(2)); e.el.setAttribute('y1', e.from.y.toFixed(2));
+      e.el.setAttribute('x2', e.to.x.toFixed(2)); e.el.setAttribute('y2', e.to.y.toFixed(2));
+    }
+  }
+
+  // Same anchors in, same picture out — run to rest, then paint once.
+  function settle(maxSteps = 900) {
+    for (const n of nodes) { n.x = n.ax; n.y = n.ay; n.vx = 0; n.vy = 0; }
+    for (let i = 0; i < maxSteps; i++) if (step() < 0.02) break;
+    paint();
+  }
+
+  // The loop only runs while something is actually moving (a drag, or the
+  // settle-back afterwards); the rest of the time the map is completely still.
+  let running = false;
+  function loop() {
+    const moved = step();
+    paint();
+    if (dragNode || moved > 0.02) requestAnimationFrame(loop);
+    else running = false;
+  }
+  function wake() { if (!running) { running = true; requestAnimationFrame(loop); } }
+
+  applyLanguage();          // paints all chrome text, fits labels, and settles the layout
 })();

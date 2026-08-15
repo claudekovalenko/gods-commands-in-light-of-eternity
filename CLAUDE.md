@@ -20,6 +20,15 @@ what Scripture commands and emphasizes, centered on salvation by grace through f
   `label`/`sublabel`/`summary` in `data.js`.
 - `app.js` — layout, spring physics, label fitting, zoom/pan. No libraries.
 
+## The layout is deterministic on purpose
+
+The map must look **identical every time it is opened** — the user is learning it, and
+spatial memory only works if a theme is always in the same place. So: no `Math.random()`
+anywhere, positions start at the computed anchors, and `settle()` relaxes the
+arrangement to rest *before* the first paint. The animation loop only runs while a
+bubble is being dragged (and while it springs back); the map is otherwise completely
+still. Don't reintroduce entry animations, idle drift, or randomised start positions.
+
 ## Scope
 
 **One page: the map.** List/review views and a search bar were built and then
@@ -64,8 +73,8 @@ views or a search bar unless asked; the earlier implementation is in git history
   a Reset view button plus double-tap.
 - **The service worker is network-first**, not cache-first. Cache-first left installed
   clients serving an old build forever and never seeing fixes. Still bump `CACHE`.
-- **Node overlap**: resolved by position each frame (velocity forces alone let circles
-  slide over each other and hide labels).
+- **Node overlap**: resolved by position inside `step()` (velocity forces alone let
+  circles slide over each other and hide labels).
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.
 - **Zoom**: the SVG `viewBox` changes, so pointer coords must go through `toGraph()`
   before being used as graph coordinates.
