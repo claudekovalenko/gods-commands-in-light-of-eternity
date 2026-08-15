@@ -183,9 +183,35 @@
   const LH = 1.16; // line height, multiple of font size
   const gauge = document.createElement('canvas').getContext('2d');
 
-  function measure(row, size) {
+  function setFont(row, size) {
     gauge.font = `${row.italic ? 'italic ' : ''}${row.weight ? row.weight + ' ' : ''}${size}px ${FONTS[lang]}`;
+  }
+  function measure(row, size) {          // advance width (fallback path only)
+    setFont(row, size);
     return gauge.measureText(row.text).width;
+  }
+
+  // True ink box of a line, in the font the device actually resolved. This is
+  // what makes fitting correct for Arabic on a device whose naskh face we have
+  // never seen — a fixed safety margin tuned to one font does not transfer.
+  const HAS_INK = (() => {
+    try {
+      gauge.font = '16px serif';
+      const m = gauge.measureText('x');
+      return typeof m.actualBoundingBoxLeft === 'number'
+          && typeof m.actualBoundingBoxAscent === 'number';
+    } catch { return false; }
+  })();
+
+  function inkBox(row, size) {
+    setFont(row, size);
+    gauge.textBaseline = 'middle';       // matches dominant-baseline: central
+    const m = gauge.measureText(row.text);
+    return {
+      halfW: (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / 2,
+      asc: m.actualBoundingBoxAscent,
+      desc: m.actualBoundingBoxDescent,
+    };
   }
 
   function wrapWords(label, maxChars) {
@@ -219,9 +245,17 @@
 
   function fits(rows, scale, R) {
     for (const { row, size, yc } of stack(rows, scale)) {
-      const reach = Math.abs(yc) + size * metrics().vert;   // furthest glyph edge from center
-      if (reach >= R) return false;
-      if (measure(row, size) / 2 > Math.sqrt(R * R - reach * reach)) return false;
+      if (HAS_INK) {
+        const k = inkBox(row, size);
+        const top = yc - k.asc, bot = yc + k.desc;
+        for (const y of [top, bot]) {
+          if (Math.hypot(k.halfW, y) > R) return false;     // corners of the real ink box
+        }
+      } else {
+        const reach = Math.abs(yc) + size * metrics().vert;
+        if (reach >= R) return false;
+        if (measure(row, size) / 2 > Math.sqrt(R * R - reach * reach)) return false;
+      }
     }
     return true;
   }
@@ -230,7 +264,9 @@
     const textEl = n.textEl, theme = n.theme;
     while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
 
-    const R = n.r * metrics().pad;                          // stay clear of the ring
+    // With a true ink box the only margin needed is the ring's own stroke plus a
+    // hair of breathing room; without it, fall back to the per-script estimate.
+    const R = HAS_INK ? n.r - strokeFor(theme) / 2 - 3 : n.r * metrics().pad;
     const maxSize = theme.category === 'center' ? n.r * 0.17 : n.r * 0.34;
     const weight = theme.category === 'center' ? 700 : 0;
 

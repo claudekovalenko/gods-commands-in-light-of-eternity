@@ -36,11 +36,14 @@ keyboard: space reveals, arrows move). Don't regress these in favour of map poli
 - **Label fitting**: text is measured on a canvas and fitted against the *chord width*
   available at each line's height, since a circle narrows at top and bottom. Don't
   replace this with a fixed font size — long labels overflow their circles.
-  Insets are **per script** (`METRICS`): Arabic ink overhangs its advance width and
-  reaches higher/lower than Latin, so it needs a bigger inset. `measureText()` returns
-  the advance width, not the ink box, so verifying with it alone will miss Arabic
-  overflow — check a zoomed screenshot. Note this sandbox has no Arabic font by
-  default; install one (see below) or the test is meaningless.
+  Fitting uses the **true ink box** (`actualBoundingBox*` from `measureText`), not the
+  advance width, so it is correct in whatever font the device actually resolved. Do not
+  go back to advance width plus a fixed safety ratio: Arabic ink overhangs its advance
+  width, and a ratio tuned to one naskh face does not transfer to another device's
+  (iOS resolves Geeza Pro / SF Arabic, not Noto Naskh). `METRICS` remains only as a
+  fallback for engines without ink metrics. Verified against rasterised ground truth:
+  the ink metric never under-reports. The canvas font string and the CSS font stack
+  must stay identical or the measurement silently drifts from what is drawn.
 - **Group clustering**: the four hubs sit on the compass points (up / right / down /
   left) so the map looks balanced. The two largest groups go *opposite* each other,
   along whichever axis has room — left/right on a wide screen, up/down on a tall one;
@@ -101,9 +104,14 @@ real overflow:
 npm pack @fontsource/noto-naskh-arabic && tar xzf fontsource-noto-naskh-arabic-*.tgz
 pip install fonttools brotli   # then convert the .woff2 to .ttf into ~/.fonts, fc-cache -f
 ```
- Check at several viewport sizes down to 390px wide that no
-label overflows its circle, no two circles overlap, and nothing is clipped by the
-header or footer. Test the Pages subpath (`/gods-commands-in-light-of-eternity/`) and
+
+To check label fitting for real, rasterise each label to a canvas and measure the ink
+(serialise the `<text>` into an SVG data URL, draw it, scan pixels) — `getBBox()` is the
+layout box and will report no overflow while glyphs visibly cross the ring. Re-run it
+with `FONTS.ar` and the CSS overridden to another Arabic face to confirm the fit does
+not depend on the font installed here. Check at several viewport sizes down to 390px
+wide that no label overflows its circle, no two circles overlap, and nothing is clipped
+by the header or footer. Test the Pages subpath (`/gods-commands-in-light-of-eternity/`) and
 an offline reload, since both differ from serving at a domain root.
 
 ## Deployment
