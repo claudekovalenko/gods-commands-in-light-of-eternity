@@ -107,27 +107,43 @@
     const hubs = THEMES.filter(t => t.category === 'hub');
     const leavesOf = h => THEMES.filter(t => t.parent === h.id);
 
-    // Each group owns a wedge sized to how many bubbles it holds — equal wedges
-    // would give the 15-bubble group the same room as the 4-bubble one, and it
-    // would spill over its neighbours.
-    const totalLeaves = hubs.reduce((n, h) => n + leavesOf(h).length, 0);
-    let cursor = -Math.PI / 2 - Math.PI / hubs.length;   // keep the first group near the top
-    hubs.forEach(h => {
-      const share = (leavesOf(h).length / totalLeaves) * Math.PI * 2;
-      h._angle = cursor + share / 2;
-      h._share = share;
-      cursor += share;
+    // The hubs sit on the compass points — up, right, down, left — so the map
+    // reads as balanced in every direction. The two largest groups are put
+    // opposite each other (and the two smallest opposite each other), otherwise
+    // both heavy groups land on the same side and the map looks lopsided.
+    const step = (Math.PI * 2) / hubs.length;
+    const slotAngle = i => -Math.PI / 2 + i * step;       // 0 = up, then clockwise
+    const bySize = hubs.slice().sort((a, b) => leavesOf(b).length - leavesOf(a).length);
+    // Put the heavy groups along whichever axis actually has room: left/right on
+    // a wide screen, up/down on a tall one. Slots are 0=up, 1=right, 2=down, 3=left.
+    const portrait = availH > availW;
+    const fillOrder = hubs.length === 4
+      ? (portrait ? [0, 2, 1, 3] : [1, 3, 0, 2])
+      : hubs.map((_, i) => i);
+
+    const ring = new Array(hubs.length);
+    bySize.forEach((h, i) => { ring[fillOrder[i]] = h; });
+    ring.forEach((h, i) => {
+      h._angle = slotAngle(i);
+      h._n = leavesOf(h).length;
       place(byId[h.id], cx + Math.cos(h._angle) * hubR * kx, cy + Math.sin(h._angle) * hubR * ky);
     });
     place(byId['gospel'], cx, cy);
 
-    hubs.forEach(h => {
+    // Hubs stay evenly spaced, but the gap between two neighbours is divided in
+    // proportion to their sizes, so a 15-bubble group borrows room from a
+    // 4-bubble one instead of overrunning it. Wedges still cannot overlap.
+    ring.forEach((h, i) => {
+      const prev = ring[(i - 1 + ring.length) % ring.length]._n;
+      const next = ring[(i + 1) % ring.length]._n;
+      const left = step * (h._n / (h._n + prev)) * 0.86;
+      const right = step * (h._n / (h._n + next)) * 0.86;
+
       const leaves = leavesOf(h);
-      // Fan strictly inside this group's own wedge, so groups cannot interleave.
-      const spread = h._share * 0.86;
-      leaves.forEach((t, i) => {
-        const a = h._angle + (leaves.length === 1 ? 0 : (i / (leaves.length - 1) - 0.5) * spread);
-        const r = hubR + base * (0.145 + (i % 2) * 0.085);   // two arcs so a big group isn't strung thin
+      leaves.forEach((t, j) => {
+        const f = leaves.length === 1 ? 0.5 : j / (leaves.length - 1);
+        const a = h._angle - left + f * (left + right);
+        const r = hubR + base * (0.145 + (j % 2) * 0.085);   // two arcs so a big group isn't strung thin
         place(byId[t.id], cx + Math.cos(a) * r * kx, cy + Math.sin(a) * r * ky);
       });
     });

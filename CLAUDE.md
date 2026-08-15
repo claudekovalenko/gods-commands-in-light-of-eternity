@@ -41,10 +41,14 @@ keyboard: space reveals, arrows move). Don't regress these in favour of map poli
   the advance width, not the ink box, so verifying with it alone will miss Arabic
   overflow — check a zoomed screenshot. Note this sandbox has no Arabic font by
   default; install one (see below) or the test is meaningless.
-- **Group clustering**: each hub owns an angular wedge sized in proportion to how many
-  leaves it has, and leaves fan strictly inside it. Equal wedges do not work — the
-  15-leaf group would overrun the 4-leaf one. Separation also uses a bigger gap
-  between groups than within one, which is what makes families read as clusters.
+- **Group clustering**: the four hubs sit on the compass points (up / right / down /
+  left) so the map looks balanced. The two largest groups go *opposite* each other,
+  along whichever axis has room — left/right on a wide screen, up/down on a tall one;
+  putting both heavy groups on one side makes it lopsided, and putting them on the
+  cramped axis pushes leaves out of their wedge. Hubs are evenly spaced, but the gap
+  between two neighbours is split in proportion to their sizes, so a 15-leaf group
+  borrows room from a 4-leaf one and wedges still never overlap. Separation also uses
+  a bigger gap between groups than within one, which makes families read as clusters.
 - **Chrome does not mirror in RTL.** The top bar, legend and panel keep the same
   position in both languages, on purpose — only text direction flips. It was
   disorienting when the panel jumped sides on switching language.
