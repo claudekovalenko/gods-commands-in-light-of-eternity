@@ -13,8 +13,11 @@ what Scripture commands and emphasizes, centered on salvation by grace through f
 
 ## Layout
 
-- `data.js` — all content: themes, `emphasis` (1–3), summaries, ESV verse excerpts.
+- `data.js` — all content: themes, `emphasis` (1–3), summaries, verse excerpts.
   Edit this to change what the map says; no code changes needed.
+- `i18n.js` — languages, per-language Bible translations, UI strings, Arabic book
+  names. Adding a language means adding it here *and* adding that key to every
+  `label`/`sublabel`/`summary` in `data.js`.
 - `app.js` — layout, spring physics, label fitting, zoom/pan. No libraries.
 - `sw.js` — offline cache. **Bump `CACHE` on every release** or installed clients keep
   serving the old build (the fetch handler is cache-first).
@@ -30,6 +33,26 @@ what Scripture commands and emphasizes, centered on salvation by grace through f
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.
 - **Zoom**: the SVG `viewBox` changes, so pointer coords must go through `toGraph()`
   before being used as graph coordinates.
+
+## Scripture text — never write it from memory
+
+`verses[].text` is keyed by translation id (`esv`, `keh`, `svd`). Only `esv` is
+populated. **Arabic Scripture text must be pasted from the published translation**
+(Ketab El Hayat / Word of Life, or Smith & Van Dyck), never reconstructed from
+memory and never machine-translated from English — this is Scripture, and a
+plausible-sounding paraphrase is worse than an honest gap. Until a translation's
+text is present, the panel shows the localized reference plus the ESV, labelled as
+the ESV, so nothing unverified is ever presented as that translation.
+
+To add it, fill in the key for each of the 119 verses:
+
+```js
+"text": { "esv": "...", "keh": "النص العربي هنا" }
+```
+
+Verse *references* are not transcribed per language — `localizeRef()` builds the
+Arabic reference from `AR_BOOKS` plus Arabic-Indic digits, so a reference can only
+be wrong in one place.
 
 ## Verifying changes
 

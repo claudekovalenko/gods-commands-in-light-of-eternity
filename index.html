@@ -13,30 +13,42 @@
 </head>
 <body>
 <header id="header">
-  <h1>God&rsquo;s Commands in Light of Eternity</h1>
-  <p class="subtitle">What the Word of God emphasizes &mdash; to believe, to pursue, to avoid &mdash; summarized from the 66 books (ESV references)</p>
+  <h1 id="title">God&rsquo;s Commands in Light of Eternity</h1>
+  <p class="subtitle" id="subtitle">What the Word of God emphasizes &mdash; to believe, to pursue, to avoid &mdash; summarized from the 66 books</p>
 </header>
 
+<div id="controls">
+  <label class="ctl">
+    <span id="lang-label">Language</span>
+    <select id="lang"></select>
+  </label>
+  <label class="ctl">
+    <span id="trans-label">Translation</span>
+    <select id="translation"></select>
+  </label>
+</div>
+
 <div id="legend">
-  <div class="legend-item"><span class="dot center-dot"></span> The Gospel &mdash; the entrance</div>
-  <div class="legend-item"><span class="dot pursue-dot"></span> Pursue &amp; grow in</div>
-  <div class="legend-item"><span class="dot avoid-dot"></span> Avoid &amp; put to death</div>
-  <div class="legend-item"><span class="line-sample"></span> Thicker ring = emphasized more often in Scripture</div>
+  <div class="legend-item"><span class="dot center-dot"></span> <span data-legend="center"></span></div>
+  <div class="legend-item"><span class="dot pursue-dot"></span> <span data-legend="pursue"></span></div>
+  <div class="legend-item"><span class="dot avoid-dot"></span> <span data-legend="avoid"></span></div>
+  <div class="legend-item"><span class="line-sample"></span> <span data-legend="emphasis"></span></div>
 </div>
 
 <svg id="graph" role="img" aria-label="Interactive graph of biblical themes. Tap a node to read its verses."></svg>
 
-<div id="hint">Pinch to zoom &middot; drag to explore &middot; tap a circle for verses</div>
+<div id="hint"></div>
 
 <aside id="panel" aria-live="polite">
-  <button id="panel-close" aria-label="Close">&times;</button>
+  <button id="panel-close" aria-label="Close" title="Close">&times;</button>
   <div id="panel-content"></div>
 </aside>
 
 <footer id="footer">
-  <p>Scripture quotations are from the ESV&reg; Bible (The Holy Bible, English Standard Version&reg;), &copy; 2001 by Crossway. Used by permission. All rights reserved.</p>
+  <p id="footer-text"></p>
 </footer>
 
+<script src="i18n.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script>

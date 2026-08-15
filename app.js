@@ -5,19 +5,28 @@
   const panelContent = document.getElementById('panel-content');
   const NS = 'http://www.w3.org/2000/svg';
 
-  const CATEGORY_NAMES = {
-    center: 'The Gospel — the entrance',
-    hub: 'Category',
-    kingdom: 'Entering the Kingdom',
-    pursue: 'Pursue & grow in',
-    avoid: 'Avoid & put to death',
-    eternity: 'In light of eternity',
+  // ——— language & translation state ———
+  const store = {
+    get(k, d) { try { return localStorage.getItem(k) || d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
   };
-  const EMPHASIS_NOTES = {
-    1: 'Stated in Scripture.',
-    2: 'Repeated in Scripture — God says it more than once.',
-    3: 'Heavily emphasized — God presses this again and again across His Word.',
-  };
+
+  function defaultLang() {
+    const saved = store.get('lang', '');
+    if (LANGS.some(l => l.id === saved)) return saved;
+    return (navigator.language || '').toLowerCase().startsWith('ar') ? 'ar' : 'en';
+  }
+
+  let lang = defaultLang();
+  let transId = (() => {
+    const saved = store.get('translation:' + lang, '');
+    const list = TRANSLATIONS[lang];
+    return list.some(t => t.id === saved) ? saved : list[0].id;
+  })();
+
+  const ui = () => UI[lang];
+  const label = th => pick(th.label, lang);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   let W = innerWidth, H = innerHeight;
   const nodes = [];
@@ -136,7 +145,7 @@
   const gauge = document.createElement('canvas').getContext('2d');
 
   function measure(row, size) {
-    gauge.font = `${row.italic ? 'italic ' : ''}${row.weight ? row.weight + ' ' : ''}${size}px Georgia, 'Times New Roman', serif`;
+    gauge.font = `${row.italic ? 'italic ' : ''}${row.weight ? row.weight + ' ' : ''}${size}px ${FONTS[lang]}`;
     return gauge.measureText(row.text).width;
   }
 
@@ -174,8 +183,8 @@
   }
 
   function layoutLabel(n) {
-    const t = n.textEl, theme = n.theme;
-    while (t.firstChild) t.removeChild(t.firstChild);
+    const textEl = n.textEl, theme = n.theme;
+    while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
 
     const R = n.r * 0.88;                                   // stay clear of the ring
     const maxSize = theme.category === 'center' ? n.r * 0.17 : n.r * 0.34;
@@ -184,9 +193,9 @@
     // Try every sensible wrap and score them.
     const candidates = [];
     for (let mc = 5; mc <= 26; mc++) {
-      const rows = wrapWords(theme.label, mc).map(l => ({ text: l, rel: 1, italic: false, weight }));
+      const rows = wrapWords(label(theme), mc).map(l => ({ text: l, rel: 1, italic: false, weight }));
       if (theme.sublabel) {
-        for (const l of wrapWords(theme.sublabel, Math.max(mc, 12))) {
+        for (const l of wrapWords(pick(theme.sublabel, lang), Math.max(mc, 12))) {
           rows.push({ text: l, rel: 0.78, italic: true, weight: 0 });
         }
       }
@@ -207,7 +216,7 @@
         .filter(c => c.scale >= top * 0.92)
         .sort((a, b) => a.lines - b.lines || b.scale - a.scale)[0];
     } else {
-      best = { scale: 7, rows: wrapWords(theme.label, 9).map(l => ({ text: l, rel: 1, italic: false, weight })) };
+      best = { scale: 7, rows: wrapWords(label(theme), 9).map(l => ({ text: l, rel: 1, italic: false, weight })) };
     }
 
     for (const { row, size, yc } of stack(best.rows, best.scale)) {
@@ -217,7 +226,7 @@
       ts.setAttribute('font-size', size.toFixed(2));
       if (row.italic) ts.setAttribute('font-style', 'italic');
       ts.textContent = row.text;
-      t.appendChild(ts);
+      textEl.appendChild(ts);
     }
   }
 
@@ -244,18 +253,90 @@
   });
 
   // ——— panel ———
-  function openPanel(t) {
-    const cat = t.category === 'center' ? CATEGORY_NAMES.center : CATEGORY_NAMES[t.category] || '';
+  let openTheme = null;
+
+  function verseHTML(v) {
+    const trans = TRANSLATIONS[lang].find(x => x.id === transId) || TRANSLATIONS[lang][0];
+    const ref = esc(localizeRef(v.ref, lang));
+    const own = v.text[transId];
+    if (own) {
+      return `<div class="verse"><div class="ref">${ref} (${esc(trans.name)})</div>
+        <div class="text">&ldquo;${esc(own)}&rdquo;</div></div>`;
+    }
+    // No text for this translation: show the reference and fall back to the ESV,
+    // clearly labelled, rather than presenting unverified Scripture text.
+    return `<div class="verse"><div class="ref">${ref}</div>
+      <div class="pending">${esc(ui().pending)}</div>
+      <div class="src-tag" dir="ltr">ESV</div>
+      <div class="text ltr" dir="ltr">&ldquo;${esc(v.text.esv)}&rdquo;</div></div>`;
+  }
+
+  function openPanel(theme) {
+    openTheme = theme;
+    const sub = theme.sublabel ? ' — ' + pick(theme.sublabel, lang) : '';
     panelContent.innerHTML = `
-      <h2>${t.label}${t.sublabel ? ' — ' + t.sublabel : ''}</h2>
-      <div class="category-tag">${cat}</div>
-      ${t.category !== 'hub' ? `<div class="emphasis-note">${EMPHASIS_NOTES[t.emphasis]}</div>` : ''}
-      <p class="summary">${t.summary}</p>
-      ${t.verses.map(v => `<div class="verse"><div class="ref">${v.ref} (ESV)</div><div class="text">&ldquo;${v.text}&rdquo;</div></div>`).join('')}
+      <h2>${esc(label(theme) + sub)}</h2>
+      <div class="category-tag">${esc(ui().categories[theme.category] || '')}</div>
+      ${theme.category !== 'hub' ? `<div class="emphasis-note">${esc(ui().emphasisNote[theme.emphasis])}</div>` : ''}
+      <p class="summary">${esc(pick(theme.summary, lang))}</p>
+      ${theme.verses.map(verseHTML).join('')}
     `;
     panel.classList.add('open');
   }
-  document.getElementById('panel-close').addEventListener('click', () => panel.classList.remove('open'));
+  function closePanel() { panel.classList.remove('open'); openTheme = null; }
+  document.getElementById('panel-close').addEventListener('click', closePanel);
+
+  // ——— language / translation controls ———
+  const langSel = document.getElementById('lang');
+  const transSel = document.getElementById('translation');
+
+  function fillTranslations() {
+    transSel.innerHTML = TRANSLATIONS[lang]
+      .map(x => `<option value="${x.id}" title="${esc(x.full)}">${esc(x.name)}</option>`).join('');
+    transSel.value = transId;
+  }
+
+  function applyLanguage() {
+    const meta = LANGS.find(l => l.id === lang);
+    document.documentElement.lang = lang;
+    document.documentElement.dir = meta.dir;
+
+    langSel.innerHTML = LANGS.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+    langSel.value = lang;
+    fillTranslations();
+
+    const s = ui();
+    document.getElementById('title').textContent = s.title;
+    document.getElementById('subtitle').textContent = s.subtitle;
+    document.getElementById('lang-label').textContent = s.language;
+    document.getElementById('trans-label').textContent = s.translation;
+    document.getElementById('hint').textContent = s.hint;
+    document.getElementById('footer-text').textContent = s.footer;
+    document.getElementById('panel-close').setAttribute('aria-label', s.close);
+    document.querySelectorAll('[data-legend]').forEach(el => {
+      el.textContent = s.legend[el.dataset.legend] || '';
+    });
+
+    // Arabic metrics differ from English, so every label must be re-fitted, and the
+    // header height may change, which moves the layout bounds.
+    computeAnchors();
+    nodes.forEach(refresh);
+    if (openTheme) openPanel(openTheme);
+  }
+
+  langSel.addEventListener('change', () => {
+    lang = langSel.value;
+    store.set('lang', lang);
+    const saved = store.get('translation:' + lang, '');
+    transId = TRANSLATIONS[lang].some(x => x.id === saved) ? saved : TRANSLATIONS[lang][0].id;
+    applyLanguage();
+  });
+
+  transSel.addEventListener('change', () => {
+    transId = transSel.value;
+    store.set('translation:' + lang, transId);
+    if (openTheme) openPanel(openTheme);
+  });
 
   // ——— input: drag a node, pan the canvas, pinch or wheel to zoom ———
   let dragNode = null, dragOff = { x: 0, y: 0 };
@@ -284,7 +365,7 @@
       return;
     }
     if (e.target === svg) {
-      panel.classList.remove('open');
+      closePanel();
       panning = toGraph(e.clientX, e.clientY);
       svg.classList.add('dragging');
     }
@@ -408,5 +489,6 @@
     requestAnimationFrame(tick);
   }
   nodes.forEach(n => { n.squish = 0; });
+  applyLanguage();          // paints all chrome text and fits labels for the active language
   requestAnimationFrame(tick);
 })();
