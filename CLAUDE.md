@@ -18,15 +18,14 @@ what Scripture commands and emphasizes, centered on salvation by grace through f
 - `i18n.js` — languages, per-language Bible translations, UI strings, Arabic book
   names. Adding a language means adding it here *and* adding that key to every
   `label`/`sublabel`/`summary` in `data.js`.
-- `app.js` — three views (map / list / review), layout, spring physics, label
-  fitting, zoom/pan, search. No libraries.
+- `app.js` — layout, spring physics, label fitting, zoom/pan. No libraries.
 
-## Views
+## Scope
 
-The map is for browsing; **the list and review views are the ones that serve
-memorising**, which is the point of the app. List = scannable and searchable;
-Review = flashcards with active recall (reveal, next, shuffle, filter by group,
-keyboard: space reveals, arrows move). Don't regress these in favour of map polish.
+**One page: the map.** List/review views and a search bar were built and then
+removed at the user's request — they want it simple. Don't reintroduce extra
+views or a search bar unless asked; the earlier implementation is in git history
+(see the commit that removed them) if it is ever wanted back.
 - `sw.js` — offline cache. **Bump `CACHE` on every release** or installed clients keep
   serving the old build (the fetch handler is cache-first).
 - `index.html`, `styles.css`, `manifest.json`, `icon*.svg`, `.nojekyll`.
@@ -70,12 +69,8 @@ keyboard: space reveals, arrows move). Don't regress these in favour of map poli
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.
 - **Zoom**: the SVG `viewBox` changes, so pointer coords must go through `toGraph()`
   before being used as graph coordinates.
-- `mode` (map/list/review) and `view` (the zoom viewBox) are different things —
-  don't merge the names, and note `applyMode()` vs `applyView()`.
 - A `position:fixed` overlay with `display:flex` defeats the `hidden` attribute and
   will silently swallow every click; `[hidden] { display: none !important }` guards it.
-- The list and review views scroll under the fixed bar unless their padding-top is
-  set from its measured height.
 
 ## Scripture text — never write it from memory
 
