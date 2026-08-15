@@ -83,29 +83,49 @@
     W = innerWidth; H = innerHeight;
     nodes.forEach(n => { n.r = radiusFor(n.theme); });
 
-    const headH = document.getElementById('header').offsetHeight || 90;
+    // Reserve exactly as much room as the control bar actually needs, so the
+    // title can never end up underneath it in any language or at any size.
+    const bar = document.getElementById('topbar').getBoundingClientRect().height;
+    const header = document.getElementById('header');
+    header.style.paddingTop = (bar + 10) + 'px';
+    const headBottom = header.getBoundingClientRect().bottom || 90;
     const footH = document.getElementById('footer').offsetHeight || 24;
     bounds.minX = 6; bounds.maxX = W - 6;
-    bounds.minY = headH + 4; bounds.maxY = H - footH - 4;
+    bounds.minY = headBottom + 4; bounds.maxY = H - footH - 4;
 
     const cx = W / 2, cy = (bounds.minY + bounds.maxY) / 2;
-    const hubR = Math.min(W, H) * 0.26;
+    const availW = bounds.maxX - bounds.minX, availH = bounds.maxY - bounds.minY;
+    const base = Math.min(availW, availH);
+    // Stretch the rings into whatever shape the screen actually is, so a tall
+    // phone doesn't waste its height on empty space.
+    const kx = Math.min(1.4, availW / base), ky = Math.min(1.4, availH / base);
+    const hubR = base * 0.27;
 
     const hubs = THEMES.filter(t => t.category === 'hub');
-    hubs.forEach((h, i) => {
-      const a = -Math.PI / 2 + (i / hubs.length) * Math.PI * 2;
-      h._angle = a;
-      place(byId[h.id], cx + Math.cos(a) * hubR, cy + Math.sin(a) * hubR);
+    const leavesOf = h => THEMES.filter(t => t.parent === h.id);
+
+    // Each group owns a wedge sized to how many bubbles it holds — equal wedges
+    // would give the 15-bubble group the same room as the 4-bubble one, and it
+    // would spill over its neighbours.
+    const totalLeaves = hubs.reduce((n, h) => n + leavesOf(h).length, 0);
+    let cursor = -Math.PI / 2 - Math.PI / hubs.length;   // keep the first group near the top
+    hubs.forEach(h => {
+      const share = (leavesOf(h).length / totalLeaves) * Math.PI * 2;
+      h._angle = cursor + share / 2;
+      h._share = share;
+      cursor += share;
+      place(byId[h.id], cx + Math.cos(h._angle) * hubR * kx, cy + Math.sin(h._angle) * hubR * ky);
     });
     place(byId['gospel'], cx, cy);
 
     hubs.forEach(h => {
-      const leaves = THEMES.filter(t => t.parent === h.id);
-      const spread = Math.min(Math.PI * 1.15, leaves.length * 0.38);
+      const leaves = leavesOf(h);
+      // Fan strictly inside this group's own wedge, so groups cannot interleave.
+      const spread = h._share * 0.86;
       leaves.forEach((t, i) => {
         const a = h._angle + (leaves.length === 1 ? 0 : (i / (leaves.length - 1) - 0.5) * spread);
-        const r = hubR + Math.min(W, H) * (0.14 + (i % 2) * 0.075);
-        place(byId[t.id], cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        const r = hubR + base * (0.145 + (i % 2) * 0.085);   // two arcs so a big group isn't strung thin
+        place(byId[t.id], cx + Math.cos(a) * r * kx, cy + Math.sin(a) * r * ky);
       });
     });
     resetView();
@@ -173,9 +193,14 @@
     });
   }
 
+  // Arabic glyphs overhang their advance width (diacritics, final hamza) and reach
+  // higher/lower than Latin, so both insets are per-script.
+  const METRICS = { en: { pad: 0.88, vert: 0.40 }, ar: { pad: 0.78, vert: 0.60 } };
+  const metrics = () => METRICS[lang] || METRICS.en;
+
   function fits(rows, scale, R) {
     for (const { row, size, yc } of stack(rows, scale)) {
-      const reach = Math.abs(yc) + size * 0.40;   // furthest glyph edge from center
+      const reach = Math.abs(yc) + size * metrics().vert;   // furthest glyph edge from center
       if (reach >= R) return false;
       if (measure(row, size) / 2 > Math.sqrt(R * R - reach * reach)) return false;
     }
@@ -186,7 +211,7 @@
     const textEl = n.textEl, theme = n.theme;
     while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
 
-    const R = n.r * 0.88;                                   // stay clear of the ring
+    const R = n.r * metrics().pad;                          // stay clear of the ring
     const maxSize = theme.category === 'center' ? n.r * 0.17 : n.r * 0.34;
     const weight = theme.category === 'center' ? 700 : 0;
 
@@ -287,12 +312,13 @@
   document.getElementById('panel-close').addEventListener('click', closePanel);
 
   // ——— language / translation controls ———
-  const langSel = document.getElementById('lang');
+  const langSeg = document.getElementById('lang-seg');
   const transSel = document.getElementById('translation');
 
   function fillTranslations() {
     transSel.innerHTML = TRANSLATIONS[lang]
-      .map(x => `<option value="${x.id}" title="${esc(x.full)}">${esc(x.name)}</option>`).join('');
+      .map(x => `<option value="${x.id}" title="${esc(x.full)}">${esc(x.name)}${x.abbr ? ' · ' + esc(x.abbr) : ''}</option>`)
+      .join('');
     transSel.value = transId;
   }
 
@@ -301,15 +327,16 @@
     document.documentElement.lang = lang;
     document.documentElement.dir = meta.dir;
 
-    langSel.innerHTML = LANGS.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
-    langSel.value = lang;
+    // Both languages are always shown, so getting back is one tap and the
+    // control is recognisable without being able to read the active language.
+    langSeg.innerHTML = LANGS.map(l =>
+      `<button type="button" data-lang="${l.id}" lang="${l.id}" aria-pressed="${l.id === lang}">${esc(l.name)}</button>`
+    ).join('');
     fillTranslations();
 
     const s = ui();
     document.getElementById('title').textContent = s.title;
     document.getElementById('subtitle').textContent = s.subtitle;
-    document.getElementById('lang-label').textContent = s.language;
-    document.getElementById('trans-label').textContent = s.translation;
     document.getElementById('hint').textContent = s.hint;
     document.getElementById('footer-text').textContent = s.footer;
     document.getElementById('panel-close').setAttribute('aria-label', s.close);
@@ -324,8 +351,10 @@
     if (openTheme) openPanel(openTheme);
   }
 
-  langSel.addEventListener('change', () => {
-    lang = langSel.value;
+  langSeg.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-lang]');
+    if (!btn || btn.dataset.lang === lang) return;
+    lang = btn.dataset.lang;
     store.set('lang', lang);
     const saved = store.get('translation:' + lang, '');
     transId = TRANSLATIONS[lang].some(x => x.id === saved) ? saved : TRANSLATIONS[lang][0].id;
@@ -456,7 +485,10 @@
           const a = nodes[i], b = nodes[j];
           const dx = b.x - a.x, dy = b.y - a.y;
           const dist = Math.hypot(dx, dy) || 0.01;
-          const min = a.r + b.r + GAP;
+          // Bubbles of the same group sit close; different groups push further
+          // apart, so each family reads as one cluster.
+          const kin = a.theme.parent && a.theme.parent === b.theme.parent;
+          const min = a.r + b.r + (kin ? GAP : GAP * 2.6);
           if (dist >= min) continue;
           const ux = dx / dist, uy = dy / dist;
           const push = min - dist;

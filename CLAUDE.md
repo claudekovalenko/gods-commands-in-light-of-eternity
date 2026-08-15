@@ -28,6 +28,18 @@ what Scripture commands and emphasizes, centered on salvation by grace through f
 - **Label fitting**: text is measured on a canvas and fitted against the *chord width*
   available at each line's height, since a circle narrows at top and bottom. Don't
   replace this with a fixed font size — long labels overflow their circles.
+  Insets are **per script** (`METRICS`): Arabic ink overhangs its advance width and
+  reaches higher/lower than Latin, so it needs a bigger inset. `measureText()` returns
+  the advance width, not the ink box, so verifying with it alone will miss Arabic
+  overflow — check a zoomed screenshot. Note this sandbox has no Arabic font by
+  default; install one (see below) or the test is meaningless.
+- **Group clustering**: each hub owns an angular wedge sized in proportion to how many
+  leaves it has, and leaves fan strictly inside it. Equal wedges do not work — the
+  15-leaf group would overrun the 4-leaf one. Separation also uses a bigger gap
+  between groups than within one, which is what makes families read as clusters.
+- **Chrome does not mirror in RTL.** The top bar, legend and panel keep the same
+  position in both languages, on purpose — only text direction flips. It was
+  disorienting when the panel jumped sides on switching language.
 - **Node overlap**: resolved by position each frame (velocity forces alone let circles
   slide over each other and hide labels).
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.
@@ -64,7 +76,14 @@ python3 -m http.server 8080
 ```
 
 Chromium is at `/opt/pw-browsers/chromium` (use `playwright-core`; do not run
-`playwright install`). Check at several viewport sizes down to 390px wide that no
+`playwright install`). For Arabic, install a real font first or the fallback hides
+real overflow:
+
+```bash
+npm pack @fontsource/noto-naskh-arabic && tar xzf fontsource-noto-naskh-arabic-*.tgz
+pip install fonttools brotli   # then convert the .woff2 to .ttf into ~/.fonts, fc-cache -f
+```
+ Check at several viewport sizes down to 390px wide that no
 label overflows its circle, no two circles overlap, and nothing is clipped by the
 header or footer. Test the Pages subpath (`/gods-commands-in-light-of-eternity/`) and
 an offline reload, since both differ from serving at a domain root.

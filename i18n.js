@@ -11,11 +11,11 @@ const LANGS = [
 // Bible translations offered per interface language. `id` keys verses[].text in data.js.
 const TRANSLATIONS = {
   en: [
-    { id: 'esv', name: 'ESV', full: 'English Standard Version' },
+    { id: 'esv', name: 'ESV', abbr: '', full: 'English Standard Version' },
   ],
   ar: [
-    { id: 'keh', name: 'كتاب الحياة', full: 'Ketab El Hayat — Word of Life (New Arabic Version)' },
-    { id: 'svd', name: 'فان دايك', full: 'Smith & Van Dyck (Arabic, 1865)' },
+    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH', full: 'Ketab El Hayat — Word of Life (New Arabic Version)' },
+    { id: 'svd', name: 'فان دايك', abbr: 'SVD', full: 'Smith & Van Dyck (Arabic, 1865)' },
   ],
 };
 
