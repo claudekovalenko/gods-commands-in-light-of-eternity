@@ -51,14 +51,29 @@
 
 <footer id="footer">
   <p id="footer-text"></p>
+  <p id="build"></p>
 </footer>
 
 <script src="i18n.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script>
+// Keeping installed copies current matters more than a fast first paint here:
+// a stale copy silently serves old Scripture handling forever.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+      reg.update();
+      setInterval(() => reg.update(), 60 * 60 * 1000);
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloading) return;            // reload once when a new build takes over
+        reloading = true;
+        location.reload();
+      });
+    } catch (e) { /* offline or unsupported: the page still works */ }
+  });
 }
 </script>
 </body>

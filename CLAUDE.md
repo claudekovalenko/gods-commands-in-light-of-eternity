@@ -35,7 +35,7 @@ still. Don't reintroduce entry animations, idle drift, or randomised start posit
 removed at the user's request — they want it simple. Don't reintroduce extra
 views or a search bar unless asked; the earlier implementation is in git history
 (see the commit that removed them) if it is ever wanted back.
-- `sw.js` — offline cache. **Bump `CACHE` on every release** or installed clients keep
+- `sw.js` — offline cache. **Bump `CACHE` *and* `BUILD` in i18n.js on every release** or installed clients keep
   serving the old build (the fetch handler is cache-first).
 - `index.html`, `styles.css`, `manifest.json`, `icon*.svg`, `.nojekyll`.
 
@@ -71,8 +71,12 @@ views or a search bar unless asked; the earlier implementation is in git history
 - **Zoom/pan is hardened**: a non-finite or zero viewBox resets instead of rendering
   garbage, panning is clamped so the graph can't be dragged out of reach, and there is
   a Reset view button plus double-tap.
-- **The service worker is network-first**, not cache-first. Cache-first left installed
-  clients serving an old build forever and never seeing fixes. Still bump `CACHE`.
+- **The service worker is network-first**, not cache-first, registered with
+  `updateViaCache: 'none'`, checked for updates on load and hourly, and the page
+  reloads once on `controllerchange`. Cache-first left installed clients serving an
+  old build for days — the user reported bugs against builds several releases old
+  more than once. `BUILD` is printed in the footer so a stale copy is identifiable
+  at a glance: **always ask which build they are on before diagnosing.**
 - **Node overlap**: resolved by position inside `step()` (velocity forces alone let
   circles slide over each other and hide labels).
 - **Bounds**: derived from the real header/footer heights so nodes aren't clipped.

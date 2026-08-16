@@ -3,6 +3,9 @@
 // Adding a language: add an entry to LANGS and UI, add an `ar`-style key to every
 // label/sublabel/summary in data.js, and list its translations in TRANSLATIONS.
 
+// Shown in the footer so a stale copy is identifiable at a glance. Bump with CACHE.
+const BUILD = 'v13';
+
 const LANGS = [
   { id: 'en', name: 'English', dir: 'ltr' },
   { id: 'ar', name: 'العربية', dir: 'rtl' },

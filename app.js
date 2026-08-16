@@ -463,6 +463,7 @@
     document.getElementById('subtitle').textContent = s.subtitle;
     document.getElementById('hint').textContent = s.hint;
     document.getElementById('footer-text').textContent = s.footer;
+    document.getElementById('build').textContent = BUILD;
     document.getElementById('panel-close').setAttribute('aria-label', s.close);
     document.querySelectorAll('[data-legend]').forEach(el => {
       el.textContent = s.legend[el.dataset.legend] || '';
