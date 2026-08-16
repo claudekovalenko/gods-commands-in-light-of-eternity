@@ -8,16 +8,49 @@ const LANGS = [
   { id: 'ar', name: 'العربية', dir: 'rtl' },
 ];
 
+// Where real Scripture text is fetched from when it is not bundled. The endpoint
+// shape comes from the official getBible client: /{translation}/{book}/{chapter}.json
+// Overridable so tests can point it at a local fixture.
+let SCRIPTURE_API = 'https://api.getbible.net/v2';
+
 // Bible translations offered per interface language. `id` keys verses[].text in data.js.
+// `source` is that translation's id at SCRIPTURE_API; a translation without one has no
+// freely available text and falls back to the ESV, labelled as the ESV.
 const TRANSLATIONS = {
   en: [
     { id: 'esv', name: 'ESV', abbr: '', full: 'English Standard Version' },
   ],
   ar: [
-    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH', full: 'Ketab El Hayat — Word of Life (New Arabic Version)' },
-    { id: 'svd', name: 'فان دايك', abbr: 'SVD', full: 'Smith & Van Dyck (Arabic, 1865)' },
+    { id: 'svd', name: 'فان دايك', abbr: 'SVD', source: 'arabicsv',
+      full: 'Smith & Van Dyck (Arabic, 1865) — public domain' },
+    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH',
+      full: 'Ketab El Hayat — Word of Life (New Arabic Version), © Biblica — needs a licensed source' },
   ],
 };
+
+// Protestant canon order, used to build the chapter URL.
+const BOOK_NUMBERS = {
+  'Genesis':1,'Exodus':2,'Leviticus':3,'Numbers':4,'Deuteronomy':5,'Joshua':6,'Judges':7,
+  'Ruth':8,'1 Samuel':9,'2 Samuel':10,'1 Kings':11,'2 Kings':12,'1 Chronicles':13,
+  '2 Chronicles':14,'Ezra':15,'Nehemiah':16,'Esther':17,'Job':18,'Psalms':19,'Proverbs':20,
+  'Ecclesiastes':21,'Song of Solomon':22,'Isaiah':23,'Jeremiah':24,'Lamentations':25,
+  'Ezekiel':26,'Daniel':27,'Hosea':28,'Joel':29,'Amos':30,'Obadiah':31,'Jonah':32,'Micah':33,
+  'Nahum':34,'Habakkuk':35,'Zephaniah':36,'Haggai':37,'Zechariah':38,'Malachi':39,
+  'Matthew':40,'Mark':41,'Luke':42,'John':43,'Acts':44,'Romans':45,'1 Corinthians':46,
+  '2 Corinthians':47,'Galatians':48,'Ephesians':49,'Philippians':50,'Colossians':51,
+  '1 Thessalonians':52,'2 Thessalonians':53,'1 Timothy':54,'2 Timothy':55,'Titus':56,
+  'Philemon':57,'Hebrews':58,'James':59,'1 Peter':60,'2 Peter':61,'1 John':62,'2 John':63,
+  '3 John':64,'Jude':65,'Revelation':66,
+};
+
+// "1 Corinthians 15:3–4" -> { book: 46, chapter: 15, from: 3, to: 4 }
+function parseRef(ref) {
+  const m = /^(.+?)\s+(\d+):(\d+)(?:\s*[–—-]\s*(\d+))?/.exec(ref);
+  if (!m) return null;
+  const book = BOOK_NUMBERS[m[1]];
+  if (!book) return null;
+  return { book, chapter: +m[2], from: +m[3], to: +(m[4] || m[3]) };
+}
 
 // Font stacks. The label fitter measures on a canvas, so JS and CSS must agree.
 const FONTS = {
@@ -53,7 +86,8 @@ const UI = {
       3: 'Heavily emphasized — God presses this again and again across His Word.',
     },
     resetView: 'Reset view',
-    pending: 'Arabic text for this translation is not bundled yet — showing the ESV below.',
+    pending: 'Showing the ESV — this translation\u2019s Arabic text could not be loaded.',
+    licensed: 'Ketab El Hayat is under copyright and has no free source; showing the ESV below.',
     footer: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway. Used by permission. All rights reserved.',
   },
   ar: {
@@ -83,7 +117,8 @@ const UI = {
       3: 'مؤكَّد بشدة — يكرِّره الله مرارًا وتكرارًا في كلمته.',
     },
     resetView: 'إعادة الضبط',
-    pending: 'النص العربي لهذه الترجمة غير مُضمَّن بعد — يُعرض أدناه نص ESV الإنجليزي.',
+    pending: 'يُعرض نص ESV — تعذَّر تحميل النص العربي لهذه الترجمة.',
+    licensed: 'ترجمة كتاب الحياة محمية بحقوق النشر ولا يتوفر لها مصدر حر؛ يُعرض أدناه نص ESV.',
     footer: 'الاقتباسات الكتابية من ترجمة ESV® (The Holy Bible, English Standard Version®)، © 2001 Crossway. مستخدمة بإذن. جميع الحقوق محفوظة.',
   },
 };

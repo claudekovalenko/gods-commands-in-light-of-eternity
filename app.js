@@ -347,20 +347,64 @@
   // ——— panel ———
   let openTheme = null;
 
-  function verseHTML(v) {
+  // ——— real Scripture text ———
+  // Text we don't ship is fetched from the published translation at run time and
+  // cached, so it is the actual translation rather than anything reconstructed.
+  const chapterMem = {};
+
+  async function getChapter(source, book, chapter) {
+    const key = `sc:${source}:${book}:${chapter}`;
+    if (chapterMem[key]) return chapterMem[key];
+    const saved = store.get(key, '');
+    if (saved) {
+      try { return (chapterMem[key] = JSON.parse(saved)); } catch { /* refetch */ }
+    }
+    const res = await fetch(`${SCRIPTURE_API}/${source}/${book}/${chapter}.json`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const verses = {};
+    (data.verses || []).forEach(v => { verses[v.verse] = String(v.text || '').trim(); });
+    if (!Object.keys(verses).length) throw new Error('no verses');
+    chapterMem[key] = verses;
+    store.set(key, JSON.stringify(verses));      // stays available offline
+    return verses;
+  }
+
+  function verseHTML(v, i) {
     const trans = TRANSLATIONS[lang].find(x => x.id === transId) || TRANSLATIONS[lang][0];
     const ref = esc(localizeRef(v.ref, lang));
     const own = v.text[transId];
     if (own) {
-      return `<div class="verse"><div class="ref">${ref} (${esc(trans.name)})</div>
+      return `<div class="verse" data-verse="${i}"><div class="ref">${ref} (${esc(trans.name)})</div>
         <div class="text">&ldquo;${esc(own)}&rdquo;</div></div>`;
     }
-    // No text for this translation: show the reference and fall back to the ESV,
-    // clearly labelled, rather than presenting unverified Scripture text.
-    return `<div class="verse"><div class="ref">${ref}</div>
-      <div class="pending">${esc(ui().pending)}</div>
+    // Until the real text is in hand, show the reference and the ESV, clearly
+    // labelled — never a reconstruction presented as this translation.
+    const note = trans.source ? ui().pending : ui().licensed;
+    return `<div class="verse" data-verse="${i}"><div class="ref">${ref}</div>
+      <div class="pending">${esc(note)}</div>
       <div class="src-tag" dir="ltr">ESV</div>
       <div class="text ltr" dir="ltr">&ldquo;${esc(v.text.esv)}&rdquo;</div></div>`;
+  }
+
+  function hydrateVerses(theme) {
+    const trans = TRANSLATIONS[lang].find(x => x.id === transId);
+    if (!trans || !trans.source) return;
+    theme.verses.forEach((v, i) => {
+      if (v.text[transId]) return;
+      const r = parseRef(v.ref);
+      if (!r) return;
+      getChapter(trans.source, r.book, r.chapter).then(verses => {
+        if (openTheme !== theme || transId !== trans.id) return;   // panel moved on
+        const parts = [];
+        for (let n = r.from; n <= r.to; n++) if (verses[n]) parts.push(verses[n]);
+        if (!parts.length) return;
+        const el = panelContent.querySelector(`[data-verse="${i}"]`);
+        if (!el) return;
+        el.innerHTML = `<div class="ref">${esc(localizeRef(v.ref, lang))} (${esc(trans.name)})</div>
+          <div class="text">&ldquo;${esc(parts.join(' '))}&rdquo;</div>`;
+      }).catch(() => { /* offline or unavailable: the labelled ESV stays */ });
+    });
   }
 
   function openPanel(theme) {
@@ -371,9 +415,10 @@
       <div class="category-tag">${esc(ui().categories[theme.category] || '')}</div>
       ${theme.category !== 'hub' ? `<div class="emphasis-note">${esc(ui().emphasisNote[theme.emphasis])}</div>` : ''}
       <p class="summary">${esc(pick(theme.summary, lang))}</p>
-      ${theme.verses.map(verseHTML).join('')}
+      ${theme.verses.map((v, i) => verseHTML(v, i)).join('')}
     `;
     panel.classList.add('open');
+    hydrateVerses(theme);
   }
   function closePanel() { panel.classList.remove('open'); openTheme = null; }
   document.getElementById('panel-close').addEventListener('click', closePanel);

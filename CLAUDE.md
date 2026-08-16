@@ -83,19 +83,23 @@ views or a search bar unless asked; the earlier implementation is in git history
 
 ## Scripture text — never write it from memory
 
-`verses[].text` is keyed by translation id (`esv`, `keh`, `svd`). Only `esv` is
-populated. **Arabic Scripture text must be pasted from the published translation**
-(Ketab El Hayat / Word of Life, or Smith & Van Dyck), never reconstructed from
-memory and never machine-translated from English — this is Scripture, and a
-plausible-sounding paraphrase is worse than an honest gap. Until a translation's
-text is present, the panel shows the localized reference plus the ESV, labelled as
-the ESV, so nothing unverified is ever presented as that translation.
+**Never type Scripture into `data.js` from memory or machine-translate it.** It is
+Scripture; a plausible-sounding paraphrase is worse than an honest gap.
 
-To add it, fill in the key for each of the 119 verses:
+Text comes from two places:
+- `verses[].text` keyed by translation id — bundled text. Only `esv` is filled.
+- Anything else is fetched at run time from `SCRIPTURE_API`
+  (`/{translation}/{book}/{chapter}.json`, the getBible v2 shape) using the
+  translation's `source` id, then cached in `localStorage` so it stays available
+  offline. `parseRef()` + `BOOK_NUMBERS` turn "1 Corinthians 15:3–4" into that URL.
 
-```js
-"text": { "esv": "...", "keh": "النص العربي هنا" }
-```
+A translation with **no** `source` (Ketab El Hayat — copyrighted, no free source)
+falls back to the ESV, explicitly labelled ESV, with a note saying why. Same when
+the fetch fails. Nothing unverified is ever shown as that translation.
+
+Note this sandbox's proxy blocks every Bible host, so the live endpoint can only be
+tested by intercepting `https://api.getbible.net/**` in Playwright and fulfilling it
+— the user's browser is not blocked, which is why fetching happens client-side.
 
 Verse *references* are not transcribed per language — `localizeRef()` builds the
 Arabic reference from `AR_BOOKS` plus Arabic-Indic digits, so a reference can only
