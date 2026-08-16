@@ -103,9 +103,13 @@ Text comes from two places:
   translation's `source` id, then cached in `localStorage` so it stays available
   offline. `parseRef()` + `BOOK_NUMBERS` turn "1 Corinthians 15:3–4" into that URL.
 
-A translation with **no** `source` (Ketab El Hayat — copyrighted, no free source)
-falls back to the ESV, explicitly labelled ESV, with a note saying why. Same when
-the fetch fails. Nothing unverified is ever shown as that translation.
+A translation with **no** `source` can name a `fallback` translation in the same
+language. Ketab El Hayat (© Biblica, no free source — getBible carries exactly one
+Arabic Bible, `arabicsv`) falls back to Van Dyck's Arabic for the same verse,
+labelled فان دايك with a note saying why, so choosing it never drops an Arabic
+reader back into English. Only if no source in that language can serve the verse
+does it fall back to the ESV, explicitly labelled ESV. Nothing is ever shown under
+the name of a translation it did not come from.
 
 Note this sandbox's proxy blocks every Bible host, so the live endpoint can only be
 tested by intercepting `https://api.getbible.net/**` in Playwright and fulfilling it

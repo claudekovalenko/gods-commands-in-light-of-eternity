@@ -380,28 +380,40 @@
     }
     // Until the real text is in hand, show the reference and the ESV, clearly
     // labelled — never a reconstruction presented as this translation.
-    const note = trans.source ? ui().pending : ui().licensed;
+    const note = textSource(trans) ? ui().pending : ui().licensed;
     return `<div class="verse" data-verse="${i}"><div class="ref">${ref}</div>
       <div class="pending">${esc(note)}</div>
       <div class="src-tag" dir="ltr">ESV</div>
       <div class="text ltr" dir="ltr">&ldquo;${esc(v.text.esv)}&rdquo;</div></div>`;
   }
 
+  // Which published text can actually supply this translation's verses, and what to
+  // call it honestly if it is a stand-in.
+  function textSource(trans) {
+    if (!trans) return null;
+    if (trans.source) return { source: trans.source, name: trans.name, note: '' };
+    const fb = TRANSLATIONS[lang].find(x => x.id === trans.fallback);
+    if (fb && fb.source) return { source: fb.source, name: fb.name, note: ui().substituted };
+    return null;
+  }
+
   function hydrateVerses(theme) {
     const trans = TRANSLATIONS[lang].find(x => x.id === transId);
-    if (!trans || !trans.source) return;
+    const src = textSource(trans);
+    if (!src) return;
     theme.verses.forEach((v, i) => {
       if (v.text[transId]) return;
       const r = parseRef(v.ref);
       if (!r) return;
-      getChapter(trans.source, r.book, r.chapter).then(verses => {
+      getChapter(src.source, r.book, r.chapter).then(verses => {
         if (openTheme !== theme || transId !== trans.id) return;   // panel moved on
         const parts = [];
         for (let n = r.from; n <= r.to; n++) if (verses[n]) parts.push(verses[n]);
         if (!parts.length) return;
         const el = panelContent.querySelector(`[data-verse="${i}"]`);
         if (!el) return;
-        el.innerHTML = `<div class="ref">${esc(localizeRef(v.ref, lang))} (${esc(trans.name)})</div>
+        el.innerHTML = `<div class="ref">${esc(localizeRef(v.ref, lang))} (${esc(src.name)})</div>
+          ${src.note ? `<div class="pending">${esc(src.note)}</div>` : ''}
           <div class="text">&ldquo;${esc(parts.join(' '))}&rdquo;</div>`;
       }).catch(() => { /* offline or unavailable: the labelled ESV stays */ });
     });

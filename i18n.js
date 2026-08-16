@@ -24,7 +24,9 @@ const TRANSLATIONS = {
   ar: [
     { id: 'svd', name: 'فان دايك', abbr: 'SVD', source: 'arabicsv',
       full: 'Smith & Van Dyck (Arabic, 1865) — public domain' },
-    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH',
+    // Ketab El Hayat is © Biblica and is in no free source, so it borrows Van Dyck's
+    // Arabic for the same verse rather than dropping the reader back into English.
+    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH', fallback: 'svd',
       full: 'Ketab El Hayat — Word of Life (New Arabic Version), © Biblica — needs a licensed source' },
   ],
 };
@@ -89,6 +91,7 @@ const UI = {
     resetView: 'Reset view',
     pending: 'Showing the ESV — this translation\u2019s Arabic text could not be loaded.',
     licensed: 'Ketab El Hayat is under copyright and has no free source; showing the ESV below.',
+    substituted: 'Ketab El Hayat needs a licence — showing Van Dyck\u2019s Arabic for the same verse.',
     footer: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway. Used by permission. All rights reserved.',
   },
   ar: {
@@ -120,6 +123,7 @@ const UI = {
     resetView: 'إعادة الضبط',
     pending: 'يُعرض نص ESV — تعذَّر تحميل النص العربي لهذه الترجمة.',
     licensed: 'ترجمة كتاب الحياة محمية بحقوق النشر ولا يتوفر لها مصدر حر؛ يُعرض أدناه نص ESV.',
+    substituted: 'ترجمة كتاب الحياة تحتاج ترخيصًا — يُعرض نص فان دايك العربي للآية نفسها.',
     footer: 'الاقتباسات الكتابية من ترجمة ESV® (The Holy Bible, English Standard Version®)، © 2001 Crossway. مستخدمة بإذن. جميع الحقوق محفوظة.',
   },
 };
