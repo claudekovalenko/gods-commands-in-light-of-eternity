@@ -1,4 +1,4 @@
-const CACHE = 'eternity-v10';   // bump on every release so cached clients update
+const CACHE = 'eternity-v11';   // bump on every release so cached clients update
 const ASSETS = [
   './',
   './index.html',

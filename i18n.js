@@ -18,7 +18,8 @@ let SCRIPTURE_API = 'https://api.getbible.net/v2';
 // freely available text and falls back to the ESV, labelled as the ESV.
 const TRANSLATIONS = {
   en: [
-    { id: 'esv', name: 'ESV', abbr: '', full: 'English Standard Version' },
+    { id: 'esv', name: 'ESV', abbr: '', full: 'English Standard Version (bundled excerpts)' },
+    { id: 'kjv', name: 'KJV', abbr: '', source: 'kjv', full: 'King James Version — public domain, loaded from the published text' },
   ],
   ar: [
     { id: 'svd', name: 'فان دايك', abbr: 'SVD', source: 'arabicsv',
@@ -123,11 +124,12 @@ const UI = {
   },
 };
 
-// Arabic names of every book referenced in data.js.
+// Arabic book names, taken from the Van Dyck translation's own naming so a
+// reference matches the Bible whose text is shown.
 const AR_BOOKS = {
-  'Exodus': 'الخروج',
-  'Leviticus': 'اللاويين',
-  'Deuteronomy': 'التثنية',
+  'Exodus': 'خروج',
+  'Leviticus': 'لاويين',
+  'Deuteronomy': 'تثنية',
   'Proverbs': 'الأمثال',
   'Ecclesiastes': 'الجامعة',
   'Micah': 'ميخا',
@@ -137,20 +139,20 @@ const AR_BOOKS = {
   'John': 'يوحنا',
   'Acts': 'أعمال الرسل',
   'Romans': 'رومية',
-  '1 Corinthians': 'كورنثوس الأولى',
-  '2 Corinthians': 'كورنثوس الثانية',
+  '1 Corinthians': '1 كورنثوس',
+  '2 Corinthians': '2 كورنثوس',
   'Galatians': 'غلاطية',
   'Ephesians': 'أفسس',
-  'Philippians': 'فيلبي',
+  'Philippians': 'فيليبي',
   'Colossians': 'كولوسي',
-  '1 Thessalonians': 'تسالونيكي الأولى',
-  '1 Timothy': 'تيموثاوس الأولى',
+  '1 Thessalonians': '1 تسالونيكي',
+  '1 Timothy': '1 تيموثاوس',
   'Titus': 'تيطس',
-  'Hebrews': 'العبرانيين',
+  'Hebrews': 'عبرانيين',
   'James': 'يعقوب',
-  '1 Peter': 'بطرس الأولى',
-  '2 Peter': 'بطرس الثانية',
-  '1 John': 'يوحنا الأولى',
+  '1 Peter': '1 بطرس',
+  '2 Peter': '2 بطرس',
+  '1 John': '1 يوحنا',
   'Revelation': 'الرؤيا',
 };
 
@@ -163,8 +165,9 @@ function localizeRef(ref, lang) {
   if (!m) return ref;
   const book = AR_BOOKS[m[1]];
   if (!book) return ref;                       // unknown book: leave it legible
-  const nums = m[2].replace(/\d/g, d => AR_DIGITS[+d]);
-  return `${book} ${nums}`;
+  const digits = t => t.replace(/\d/g, d => AR_DIGITS[+d]);
+  return `${digits(book)} ${digits(m[2])}`;      // "1 كورنثوس" -> "١ كورنثوس"
+
 }
 
 // label/summary fields hold {en, ar}; fall back to English if a language is missing.

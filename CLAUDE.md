@@ -86,6 +86,16 @@ views or a search bar unless asked; the earlier implementation is in git history
 **Never type Scripture into `data.js` from memory or machine-translate it.** It is
 Scripture; a plausible-sounding paraphrase is worse than an honest gap.
 
+**The bundled `esv` strings were written from memory during the first build and have
+never been checked against Crossway's text.** Treat them as unverified. The fix is to
+use a translation with a `source` (KJV, Van Dyck), whose text comes from the published
+edition, or to license the ESV and fetch it too.
+
+Verse *selection* also matters: don't cite the same passage under two themes, and
+watch for two verses that say the same thing in different words (James 4:6 and
+1 Peter 5:5 are literally the same sentence). A duplicate check is worth re-running
+after any content edit.
+
 Text comes from two places:
 - `verses[].text` keyed by translation id — bundled text. Only `esv` is filled.
 - Anything else is fetched at run time from `SCRIPTURE_API`

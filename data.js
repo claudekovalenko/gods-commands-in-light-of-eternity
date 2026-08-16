@@ -259,12 +259,6 @@ const THEMES = [
     },
     "verses": [
       {
-        "ref": "Matthew 7:21",
-        "text": {
-          "esv": "Not everyone who says to me, \"Lord, Lord,\" will enter the kingdom of heaven, but the one who does the will of my Father who is in heaven."
-        }
-      },
-      {
         "ref": "James 1:22",
         "text": {
           "esv": "But be doers of the word, and not hearers only, deceiving yourselves."
@@ -901,12 +895,6 @@ const THEMES = [
         }
       },
       {
-        "ref": "Colossians 3:5",
-        "text": {
-          "esv": "...and covetousness, which is idolatry."
-        }
-      },
-      {
         "ref": "1 Corinthians 10:14",
         "text": {
           "esv": "Therefore, my beloved, flee from idolatry."
@@ -968,12 +956,6 @@ const THEMES = [
       "ar": "يحذِّر يسوع أن رفض المغفرة من القلب يُفقِد الإنسان مغفرة الآب."
     },
     "verses": [
-      {
-        "ref": "Matthew 6:15",
-        "text": {
-          "esv": "But if you do not forgive others their trespasses, neither will your Father forgive your trespasses."
-        }
-      },
       {
         "ref": "Matthew 18:34–35",
         "text": {
@@ -1114,12 +1096,6 @@ const THEMES = [
         "ref": "Proverbs 6:16–17",
         "text": {
           "esv": "There are six things that the LORD hates... haughty eyes, a lying tongue..."
-        }
-      },
-      {
-        "ref": "1 Peter 5:5",
-        "text": {
-          "esv": "God opposes the proud but gives grace to the humble."
         }
       }
     ]
