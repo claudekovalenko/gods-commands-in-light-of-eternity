@@ -387,6 +387,19 @@
       <div class="text ltr" dir="ltr">&ldquo;${esc(v.text.esv)}&rdquo;</div></div>`;
   }
 
+  // A translation with no fetchable source can ship its text as a local file
+  // (see keh.json): fill in a reference and it is used in preference to
+  // everything else, under that translation's own name.
+  const localMem = {};
+  async function getLocal(file) {
+    if (localMem[file] !== undefined) return localMem[file];
+    try {
+      const res = await fetch(file, { cache: 'no-cache' });
+      localMem[file] = res.ok ? await res.json() : {};
+    } catch { localMem[file] = {}; }
+    return localMem[file];
+  }
+
   // Which published text can actually supply this translation's verses, and what to
   // call it honestly if it is a stand-in.
   function textSource(trans) {
@@ -397,25 +410,47 @@
     return null;
   }
 
+  function paintVerse(i, v, name, text, note) {
+    const el = panelContent.querySelector(`[data-verse="${i}"]`);
+    if (!el) return;
+    el.innerHTML = `<div class="ref">${esc(localizeRef(v.ref, lang))} (${esc(name)})</div>
+      ${note ? `<div class="pending">${esc(note)}</div>` : ''}
+      <div class="text">&ldquo;${esc(text)}&rdquo;</div>`;
+  }
+
   function hydrateVerses(theme) {
     const trans = TRANSLATIONS[lang].find(x => x.id === transId);
+    if (!trans) return;
+
+    // 1. this translation's own text, shipped as a file
+    if (trans.localFile) {
+      getLocal(trans.localFile).then(map => {
+        if (openTheme !== theme || transId !== trans.id) return;
+        theme.verses.forEach((v, i) => {
+          const own = (map[v.ref] || '').trim();
+          if (own) paintVerse(i, v, trans.name, own, '');
+        });
+      });
+    }
+
+    // 2. otherwise fetch, from this translation or its stand-in
     const src = textSource(trans);
     if (!src) return;
     theme.verses.forEach((v, i) => {
       if (v.text[transId]) return;
       const r = parseRef(v.ref);
       if (!r) return;
-      getChapter(src.source, r.book, r.chapter).then(verses => {
-        if (openTheme !== theme || transId !== trans.id) return;   // panel moved on
-        const parts = [];
-        for (let n = r.from; n <= r.to; n++) if (verses[n]) parts.push(verses[n]);
-        if (!parts.length) return;
-        const el = panelContent.querySelector(`[data-verse="${i}"]`);
-        if (!el) return;
-        el.innerHTML = `<div class="ref">${esc(localizeRef(v.ref, lang))} (${esc(src.name)})</div>
-          ${src.note ? `<div class="pending">${esc(src.note)}</div>` : ''}
-          <div class="text">&ldquo;${esc(parts.join(' '))}&rdquo;</div>`;
-      }).catch(() => { /* offline or unavailable: the labelled ESV stays */ });
+      Promise.all([getChapter(src.source, r.book, r.chapter),
+                   trans.localFile ? getLocal(trans.localFile) : {}])
+        .then(([verses, map]) => {
+          if (openTheme !== theme || transId !== trans.id) return;   // panel moved on
+          if ((map[v.ref] || '').trim()) return;                     // own text already shown
+          const parts = [];
+          for (let n = r.from; n <= r.to; n++) if (verses[n]) parts.push(verses[n]);
+          if (!parts.length) return;
+          paintVerse(i, v, src.name, parts.join(' '), src.note);
+        })
+        .catch(() => { /* offline or unavailable: the labelled ESV stays */ });
     });
   }
 

@@ -4,7 +4,7 @@
 // label/sublabel/summary in data.js, and list its translations in TRANSLATIONS.
 
 // Shown in the footer so a stale copy is identifiable at a glance. Bump with CACHE.
-const BUILD = 'v13';
+const BUILD = 'v14';
 
 const LANGS = [
   { id: 'en', name: 'English', dir: 'ltr' },
@@ -29,7 +29,7 @@ const TRANSLATIONS = {
       full: 'Smith & Van Dyck (Arabic, 1865) — public domain' },
     // Ketab El Hayat is © Biblica and is in no free source, so it borrows Van Dyck's
     // Arabic for the same verse rather than dropping the reader back into English.
-    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH', fallback: 'svd',
+    { id: 'keh', name: 'كتاب الحياة', abbr: 'KEH', fallback: 'svd', localFile: 'keh.json',
       full: 'Ketab El Hayat — Word of Life (New Arabic Version), © Biblica — needs a licensed source' },
   ],
 };

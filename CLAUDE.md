@@ -107,6 +107,13 @@ Text comes from two places:
   translation's `source` id, then cached in `localStorage` so it stays available
   offline. `parseRef()` + `BOOK_NUMBERS` turn "1 Corinthians 15:3–4" into that URL.
 
+**To add Ketab El Hayat**: paste each verse into `keh.json`, which is keyed by the
+same reference string as `data.js` and ships with all 115 references empty. A filled
+entry is used in preference to everything else and is shown under كتاب الحياة with no
+stand-in note; empty entries fall through. That is the only route — it is © Biblica
+and is in no reachable source (getBible carries one Arabic Bible, `arabicsv`; npm and
+PyPI have none). Never fill it from memory.
+
 A translation with **no** `source` can name a `fallback` translation in the same
 language. Ketab El Hayat (© Biblica, no free source — getBible carries exactly one
 Arabic Bible, `arabicsv`) falls back to Van Dyck's Arabic for the same verse,
